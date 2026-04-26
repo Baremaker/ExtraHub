@@ -61,13 +61,13 @@ class SplashScreen extends StatelessWidget {
                     : 'não inicializado',
               ),
               const SizedBox(height: AppSpacing.sm),
-              _StatusRow(
+              const _StatusRow(
                 label: 'Tema',
                 ok: true,
                 detail: 'dark mode aplicado',
               ),
               const SizedBox(height: AppSpacing.sm),
-              _StatusRow(
+              const _StatusRow(
                 label: 'Roteador',
                 ok: true,
                 detail: 'go_router ativo',

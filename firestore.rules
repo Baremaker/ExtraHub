@@ -1,0 +1,208 @@
+rules_version = '2';
+
+// =====================================================================
+// ExtraHub — Cloud Firestore Security Rules
+// ---------------------------------------------------------------------
+// Estratégia:
+//   * Tudo é negado por default.
+//   * Usuário precisa estar autenticado E ter email @usp.br para qualquer
+//     operação (validado em isAuthed()).
+//   * Membros leem dados de SUAS extras. Admins escrevem. Owner manda no
+//     próprio mandato.
+//   * Funções helper centralizam checks repetidos.
+// ---------------------------------------------------------------------
+// Limites a lembrar:
+//   * Cada `get()`/`exists()` numa rule conta como 1 read e tem custo.
+//   * Máximo 10 chamadas a get/exists por request.
+//   * Funções não suportam recursão.
+// =====================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── HELPERS ──────────────────────────────────────────────────────
+    function isAuthed() {
+      return request.auth != null
+          && request.auth.token.email != null
+          && request.auth.token.email_verified == true
+          && request.auth.token.email.matches('.*@usp[.]br$');
+    }
+
+    function isSelf(uid) {
+      return isAuthed() && request.auth.uid == uid;
+    }
+
+    function memberDoc(extraId) {
+      return get(/databases/$(database)/documents/extras/$(extraId)/members/$(request.auth.uid));
+    }
+
+    function isMember(extraId) {
+      return isAuthed()
+          && exists(/databases/$(database)/documents/extras/$(extraId)/members/$(request.auth.uid))
+          && memberDoc(extraId).data.status == 'active';
+    }
+
+    function isAdmin(extraId) {
+      return isMember(extraId) && memberDoc(extraId).data.role == 'admin';
+    }
+
+    function isOwner(extraId) {
+      return isAdmin(extraId) && memberDoc(extraId).data.isOwner == true;
+    }
+
+    // Verifica se um campo NÃO foi alterado (para imutabilidade parcial).
+    function unchanged(field) {
+      return request.resource.data[field] == resource.data[field];
+    }
+
+    // =================================================================
+    // USERS
+    // =================================================================
+    match /users/{uid} {
+      // Qualquer usuário autenticado pode ler perfis (necessário para
+      // resolver author de avisos, líder de projeto, etc.). Não há dado
+      // sensível além de email @usp.br.
+      allow read: if isAuthed();
+
+      // Criação: só o próprio user, e o uid do doc precisa bater com o
+      // auth.uid.
+      allow create: if isSelf(uid)
+                    && request.resource.data.uid == uid
+                    && request.resource.data.email == request.auth.token.email;
+
+      // Atualização: só o próprio. Campos imutáveis: uid, email, createdAt.
+      allow update: if isSelf(uid)
+                    && unchanged('uid')
+                    && unchanged('email')
+                    && unchanged('createdAt');
+
+      // Sem delete via cliente.
+      allow delete: if false;
+    }
+
+    // =================================================================
+    // EXTRAS
+    // =================================================================
+    match /extras/{extraId} {
+      // Ler: precisa ser membro ativo.
+      allow read: if isMember(extraId);
+
+      // Criar: qualquer usuário autenticado pode criar uma nova extra.
+      // Quem cria automaticamente é o owner — mas isso é validado pela
+      // criação simultânea do doc em members (em transaction no client).
+      allow create: if isAuthed()
+                    && request.resource.data.ownerId == request.auth.uid;
+
+      // Atualizar: apenas admins. Owner só pode ser mudado pelo próprio
+      // owner (em fluxo "transferir propriedade", se vier).
+      allow update: if isAdmin(extraId)
+                    && unchanged('createdAt')
+                    && (unchanged('ownerId') || isOwner(extraId));
+
+      // Deletar: apenas owner. (Cuidado: subcollections precisam ser
+      // limpadas separadamente — Firestore não cascata.)
+      allow delete: if isOwner(extraId);
+
+      // ─── MEMBERS ──────────────────────────────────────────────────
+      match /members/{memberUid} {
+        allow read: if isMember(extraId);
+
+        // Criação: por admin (convidando alguém manualmente) OU pelo
+        // próprio user no momento de criar a extra (quando o doc já não
+        // existe). Validar isOwner=true só permitido se for o ownerId
+        // da extra-pai.
+        allow create: if isAuthed()
+                      && (isAdmin(extraId)
+                          || (isSelf(memberUid)
+                              && request.resource.data.role == 'admin'
+                              && request.resource.data.isOwner == true
+                              && get(/databases/$(database)/documents/extras/$(extraId)).data.ownerId == request.auth.uid));
+
+        // Atualização:
+        //   * Admin pode alterar role/status/position de qualquer membro
+        //     (exceto o próprio owner, que só ele mexe em si).
+        //   * O próprio user pode atualizar campos limitados (position,
+        //     inProjectIds, displayName/photoURL para sincronizar com
+        //     o perfil global).
+        allow update: if isAuthed() && (
+          (isAdmin(extraId)
+            && (memberDoc(extraId).data.isOwner != true || isSelf(memberUid))
+            && unchanged('uid')
+            && unchanged('joinedAt'))
+          || (isSelf(memberUid)
+            && unchanged('uid') && unchanged('email')
+            && unchanged('role') && unchanged('isOwner')
+            && unchanged('status') && unchanged('joinedAt'))
+        );
+
+        // Deletar membro: apenas admin, e nunca o owner.
+        allow delete: if isAdmin(extraId)
+                      && resource.data.isOwner != true;
+      }
+
+      // ─── PROJECTS ─────────────────────────────────────────────────
+      match /projects/{projectId} {
+        allow read: if isMember(extraId);
+        allow create: if isAdmin(extraId);
+        // Atualizar: admin OU dono do projeto (líder).
+        allow update: if isAdmin(extraId)
+                      || (isMember(extraId)
+                          && resource.data.ownerId == request.auth.uid);
+        allow delete: if isAdmin(extraId);
+      }
+
+      // ─── ANNOUNCEMENTS ────────────────────────────────────────────
+      match /announcements/{announcementId} {
+        allow read: if isMember(extraId);
+        allow create: if isAdmin(extraId)
+                      && request.resource.data.author.uid == request.auth.uid;
+        allow update: if isAdmin(extraId)
+                      && unchanged('author')
+                      && unchanged('createdAt');
+        allow delete: if isAdmin(extraId);
+      }
+
+      // ─── EVENTS ───────────────────────────────────────────────────
+      match /events/{eventId} {
+        allow read: if isMember(extraId);
+        allow create: if isAdmin(extraId)
+                      && request.resource.data.createdBy == request.auth.uid;
+        allow update: if isAdmin(extraId);
+        allow delete: if isAdmin(extraId);
+      }
+    }
+
+    // =================================================================
+    // INVITES (top-level)
+    // =================================================================
+    match /invites/{inviteId} {
+      // Ler: o destinatário (pelo email) ou um admin da extra-alvo.
+      allow read: if isAuthed()
+                  && (resource.data.email == request.auth.token.email
+                      || isAdmin(resource.data.extraId));
+
+      // Criar: admin da extra que está convidando.
+      allow create: if isAuthed()
+                    && isAdmin(request.resource.data.extraId)
+                    && request.resource.data.invitedBy.uid == request.auth.uid
+                    && request.resource.data.status == 'pending';
+
+      // Atualizar: o destinatário pode mudar status para accepted/declined.
+      // Admin da extra também pode (cancelar etc).
+      allow update: if isAuthed() && (
+        (resource.data.email == request.auth.token.email
+          && unchanged('email')
+          && unchanged('extraId')
+          && unchanged('role')
+          && unchanged('invitedBy')
+          && unchanged('createdAt')
+          && (request.resource.data.status == 'accepted'
+              || request.resource.data.status == 'declined'))
+        || isAdmin(resource.data.extraId)
+      );
+
+      // Deletar: admin da extra-alvo.
+      allow delete: if isAuthed() && isAdmin(resource.data.extraId);
+    }
+  }
+}

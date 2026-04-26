@@ -87,12 +87,12 @@ class AppTheme {
       ),
 
       // ─── CARDS ───────────────────────────────────────────────────────────
-      cardTheme: CardThemeData(
+      cardTheme: const CardThemeData(
         color: AppColors.bgCard,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: AppRadius.radiusLg,
-          side: const BorderSide(color: AppColors.border),
+          side: BorderSide(color: AppColors.border),
         ),
         margin: EdgeInsets.zero,
       ),
