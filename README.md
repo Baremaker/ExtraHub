@@ -1,17 +1,100 @@
-# extrahub
+# ExtraHub
 
-ExtraHub — gestao de extras universitarias da USP
+Aplicativo multiplataforma (web + Android) para gestão de extracurriculares
+universitárias da USP-São Carlos. Projeto desenvolvido para a disciplina
+**SSC0961 — Desenvolvimento Web e Mobile** (2026).
 
-## Getting Started
+## Stack
 
-This project is a starting point for a Flutter application.
+- **Flutter 3.41** + **Dart 3.11**
+- **Firebase**: Authentication, Cloud Firestore, Storage
+- **Riverpod 3** para gerenciamento de estado
+- **go_router 17** para navegação declarativa
+- **freezed** + **json_serializable** para models imutáveis
 
-A few resources to get you started if this is your first Flutter project:
+## Como rodar
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+```bash
+# Web (Chrome)
+flutter run -d chrome
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+# Android (com device USB conectado ou emulador rodando)
+flutter run -d android
+
+# Lista de devices disponíveis
+flutter devices
+```
+
+## Estrutura de pastas
+
+```
+lib/
+├── main.dart                  # entry point + init do Firebase
+├── firebase_options.dart      # gerado pelo flutterfire — não editar
+├── app/                       # configuração global da aplicação
+│   ├── app.dart               # MaterialApp.router
+│   ├── theme/                 # tokens de design (cores, tipografia, etc.)
+│   └── router/                # configuração do go_router
+├── core/                      # código reutilizado entre features
+│   ├── widgets/               # componentes visuais reutilizáveis
+│   ├── extensions/            # extensions sobre tipos do Dart/Flutter
+│   └── utils/                 # helpers diversos
+└── features/                  # uma pasta por feature de negócio
+    ├── splash/                # tela de splash (smoke test atualmente)
+    ├── auth/                  # login, signup, autenticação
+    ├── extras/                # cadastro/seleção da extra (organização)
+    ├── members/               # gestão de membros
+    ├── projects/              # gestão de projetos
+    ├── announcements/         # mural de avisos
+    ├── calendar/              # calendário/eventos
+    ├── dashboard/             # tela inicial agregadora
+    └── profile/               # perfil do usuário
+
+Cada feature segue a divisão Clean leve:
+  - data/         → repositories, datasources (Firestore, etc.)
+  - domain/       → models e contratos
+  - presentation/ → screens, widgets e providers (Riverpod)
+```
+
+## Convenções
+
+- **Nomes de arquivo**: `snake_case.dart`
+- **Classes**: `PascalCase`
+- **Variáveis e funções**: `camelCase`
+- **Imports relativos** dentro da mesma feature; **imports de package**
+  para tudo que vier de fora
+- **Const sempre que possível** — o linter avisa
+- **Sem `print`** — usar `debugPrint` ou logger; o linter avisa
+
+## Comandos úteis
+
+```bash
+# Análise estática
+flutter analyze
+
+# Rodar testes
+flutter test
+
+# Gerar código (freezed, riverpod_generator, json_serializable)
+dart run build_runner build --delete-conflicting-outputs
+
+# Modo watch (regenera ao salvar)
+dart run build_runner watch --delete-conflicting-outputs
+```
+
+## Workflow de Git
+
+Commits diretos em `main`, com convenção:
+
+- `feat:` nova feature
+- `fix:` correção de bug
+- `chore:` manutenção, dependências, scripts
+- `refactor:` refatoração sem mudança de comportamento
+- `docs:` documentação
+- `style:` formatação, sem mudança de código
+- `test:` testes
+
+## Equipe
+
+Felipe Freitas Maia (e demais membros do grupo) — Engenharia de Computação,
+ICMC-USP São Carlos.

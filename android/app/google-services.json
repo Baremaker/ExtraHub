@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "466274964143",
+    "project_id": "extrahub-fcc35",
+    "storage_bucket": "extrahub-fcc35.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:466274964143:android:da17a4e1d2bfe0539d3a5a",
+        "android_client_info": {
+          "package_name": "br.usp.icmc.extrahub"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDtEuftSsVyKSLsCVM4G_hvNSHZGLBbP6w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
