@@ -41,13 +41,6 @@
         { "fieldPath": "pinned", "order": "DESCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
-    },
-    {
-      "collectionGroup": "events",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "startDate", "order": "ASCENDING" }
-      ]
     }
   ],
   "fieldOverrides": []
