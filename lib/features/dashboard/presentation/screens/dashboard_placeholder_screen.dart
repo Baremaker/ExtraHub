@@ -10,8 +10,12 @@ import '../../../extras/presentation/providers/extras_providers.dart';
 import '../../../members/presentation/providers/members_providers.dart';
 import '../../../projects/domain/project.dart';
 import '../../../projects/presentation/providers/projects_providers.dart';
+import '../../../announcements/presentation/providers/announcements_providers.dart';
+import '../../../calendar/presentation/providers/events_providers.dart';
 
-/// Placeholder do dashboard usado até a Fase 4 (dashboard agregador real).
+/// Placeholder do dashboard. Mostra contadores reais de todas as features
+/// implementadas até agora. Será substituído pelo dashboard agregador
+/// "de verdade" se sobrar tempo.
 class DashboardPlaceholderScreen extends ConsumerWidget {
   const DashboardPlaceholderScreen({super.key});
 
@@ -24,6 +28,9 @@ class DashboardPlaceholderScreen extends ConsumerWidget {
     final activeProjects = projects
         .where((p) => p.status == ProjectStatus.active)
         .length;
+    final announcements = ref.watch(announcementsProvider).value ?? const [];
+    final pinned = announcements.where((a) => a.pinned).length;
+    final upcomingCount = ref.watch(upcomingEventsProvider).length;
 
     return AppShell(
       title: 'Dashboard',
@@ -38,7 +45,6 @@ class DashboardPlaceholderScreen extends ConsumerWidget {
             ),
           const SizedBox(height: AppSpacing.lg),
 
-          // ─── STATS ───────────────────────────────────────────────────
           LayoutBuilder(
             builder: (context, c) {
               const gap = AppSpacing.md;
@@ -55,15 +61,17 @@ class DashboardPlaceholderScreen extends ConsumerWidget {
                   value: '${projects.length}',
                   sub: '$activeProjects em andamento',
                 ),
-                const _StatCard(
+                _StatCard(
                   label: 'Avisos',
-                  value: '—',
-                  sub: 'em breve',
+                  value: '${announcements.length}',
+                  sub: pinned == 0
+                      ? 'nenhum fixado'
+                      : '$pinned fixado${pinned > 1 ? 's' : ''}',
                 ),
-                const _StatCard(
+                _StatCard(
                   label: 'Eventos',
-                  value: '—',
-                  sub: 'em breve',
+                  value: '$upcomingCount',
+                  sub: 'próximos',
                 ),
               ];
               return Wrap(
@@ -78,7 +86,6 @@ class DashboardPlaceholderScreen extends ConsumerWidget {
 
           const SizedBox(height: AppSpacing.xl),
 
-          // ─── BOAS-VINDAS ─────────────────────────────────────────────
           Container(
             padding: const EdgeInsets.all(AppSpacing.xl),
             decoration: const BoxDecoration(
@@ -101,9 +108,10 @@ class DashboardPlaceholderScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
-                  'A Fase 3 do desenvolvimento está concluída — agora o app '
-                  'tem gestão de membros, perfil e projetos completos. '
-                  'Avisos e calendário virão nas próximas fases.',
+                  'A Fase 4 do desenvolvimento está concluída — todas as '
+                  'features principais (membros, projetos, avisos, calendário) '
+                  'estão funcionando. Próxima fase: dashboard agregador, '
+                  'testes automatizados e polimento.',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
@@ -141,10 +149,7 @@ class _StatCard extends StatelessWidget {
         children: [
           Text(label, style: Theme.of(context).textTheme.labelSmall),
           const SizedBox(height: AppSpacing.xs),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.displayMedium,
-          ),
+          Text(value, style: Theme.of(context).textTheme.displayMedium),
           const SizedBox(height: AppSpacing.xxs),
           Text(sub, style: Theme.of(context).textTheme.bodySmall),
         ],

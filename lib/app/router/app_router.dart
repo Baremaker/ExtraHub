@@ -2,11 +2,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/announcements/presentation/screens/announcements_screen.dart';
 import '../../features/auth/presentation/providers/auth_providers.dart';
 import '../../features/auth/presentation/screens/email_verification_screen.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/signup_screen.dart';
+import '../../features/calendar/presentation/screens/calendar_screen.dart';
 import '../../features/dashboard/presentation/screens/dashboard_placeholder_screen.dart';
 import '../../features/extras/presentation/screens/choose_extra_screen.dart';
 import '../../features/extras/presentation/screens/create_extra_screen.dart';
@@ -18,12 +20,10 @@ import '../../features/projects/presentation/screens/projects_screen.dart';
 import '../../features/splash/presentation/screens/splash_screen.dart';
 import 'routes.dart';
 
-/// Refresh notifier exposto para o GoRouter.
 class _RouterRefreshNotifier extends ChangeNotifier {
   void refresh() => notifyListeners();
 }
 
-/// Provider do `GoRouter` da aplicação.
 final goRouterProvider = Provider<GoRouter>((ref) {
   final refresh = _RouterRefreshNotifier();
   ref.listen(authStateProvider, (_, _) => refresh.refresh());
@@ -35,7 +35,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     debugLogDiagnostics: kDebugMode,
     refreshListenable: refresh,
 
-    // ─── REDIRECT ──────────────────────────────────────────────────────────
     redirect: (context, state) {
       final loc = state.matchedLocation;
       final firebaseUser = ref.read(currentFirebaseUserProvider);
@@ -82,7 +81,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       return null;
     },
 
-    // ─── ROTAS ─────────────────────────────────────────────────────────────
     routes: [
       GoRoute(
         path: Routes.splash,
@@ -149,6 +147,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                 ProjectDetailScreen(id: state.pathParameters['id']!),
           ),
         ],
+      ),
+      GoRoute(
+        path: Routes.announcements,
+        name: Routes.announcementsName,
+        builder: (_, _) => const AnnouncementsScreen(),
+      ),
+      GoRoute(
+        path: Routes.calendar,
+        name: Routes.calendarName,
+        builder: (_, _) => const CalendarScreen(),
       ),
       GoRoute(
         path: Routes.profile,

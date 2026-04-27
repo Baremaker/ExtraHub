@@ -14,14 +14,11 @@ import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 
-/// Largura padrão da sidebar (espelha `--sidebar-w: 196px` do protótipo).
 const double kSidebarWidth = 220;
 
-/// Sidebar do ExtraHub: logo + nome da extra ativa + nav + card do user.
 class Sidebar extends ConsumerWidget {
   const Sidebar({super.key, this.onNavigate});
 
-  /// Callback chamado após navegar (usado para fechar o drawer no mobile).
   final VoidCallback? onNavigate;
 
   @override
@@ -43,12 +40,7 @@ class Sidebar extends ConsumerWidget {
         children: [
           // ─── LOGO + NOME DA EXTRA ──────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.lg,
-              AppSpacing.lg,
-              AppSpacing.lg,
-              AppSpacing.lg,
-            ),
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -117,15 +109,13 @@ class Sidebar extends ConsumerWidget {
                   label: 'Avisos',
                   icon: Icons.campaign_outlined,
                   active: loc.startsWith(Routes.announcements),
-                  enabled: false,
-                  onTap: () {},
+                  onTap: () => _go(context, Routes.announcementsName),
                 ),
                 _NavItem(
                   label: 'Calendário',
                   icon: Icons.calendar_today_outlined,
                   active: loc.startsWith(Routes.calendar),
-                  enabled: false,
-                  onTap: () {},
+                  onTap: () => _go(context, Routes.calendarName),
                 ),
 
                 const SizedBox(height: AppSpacing.md),
@@ -157,7 +147,6 @@ class Sidebar extends ConsumerWidget {
             ),
           ),
 
-          // ─── USER CARD ────────────────────────────────────────────────
           if (appUser != null) _UserCard(user: appUser),
         ],
       ),
