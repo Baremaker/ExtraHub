@@ -23,12 +23,71 @@ class InvitesRepository {
         .map((snap) => snap.docs.map(Invite.fromFirestore).toList());
   }
 
+  /// Stream de convites pendentes que o admin enviou para uma extra
+  /// (para listar no painel administrativo no futuro).
+  Stream<List<Invite>> watchPendingForExtra(String extraId) => _invites
+      .where('extraId', isEqualTo: extraId)
+      .where('status', isEqualTo: 'pending')
+      .orderBy('createdAt', descending: true)
+      .snapshots()
+      .map((snap) => snap.docs.map(Invite.fromFirestore).toList());
+
+  /// Cria um convite novo. Falha se já existir um convite **pendente**
+  /// para o mesmo email + extra.
+  ///
+  /// Validade: 7 dias.
+  Future<String> createInvite({
+    required String extraId,
+    required String extraName,
+    required String email,
+    required MemberRole role,
+    required String inviterUid,
+    required String inviterDisplayName,
+  }) async {
+    final normalizedEmail = email.trim().toLowerCase();
+
+    // Checa duplicata
+    final existing = await _invites
+        .where('extraId', isEqualTo: extraId)
+        .where('email', isEqualTo: normalizedEmail)
+        .where('status', isEqualTo: 'pending')
+        .limit(1)
+        .get();
+
+    if (existing.docs.isNotEmpty) {
+      throw StateError('Já existe um convite pendente para este e-mail.');
+    }
+
+    final ref = _invites.doc();
+    final now = DateTime.now();
+    final expiresAt = now.add(const Duration(days: 7));
+
+    await ref.set({
+      'id': ref.id,
+      'email': normalizedEmail,
+      'extraId': extraId,
+      'extraName': extraName,
+      'role': role == MemberRole.admin ? 'admin' : 'member',
+      'invitedBy': {
+        'uid': inviterUid,
+        'displayName': inviterDisplayName,
+      },
+      'status': 'pending',
+      'createdAt': FieldValue.serverTimestamp(),
+      'expiresAt': Timestamp.fromDate(expiresAt),
+      'respondedAt': null,
+    });
+
+    return ref.id;
+  }
+
   /// Aceita o convite [inviteId] para o usuário [uid].
   ///
   /// Em uma transaction:
   ///   1. Marca o convite como `accepted`
   ///   2. Cria o doc `extras/{extraId}/members/{uid}`
   ///   3. Adiciona `extraId` em `users/{uid}.extraIds` (e seta como ativo)
+  ///   4. Incrementa `extras/{extraId}.memberCount`
   Future<void> acceptInvite({
     required String inviteId,
     required String uid,
@@ -58,6 +117,7 @@ class InvitesRepository {
       final memberRef = _firestore.doc(
         FirestorePaths.member(invite.extraId, uid),
       );
+      final extraRef = _firestore.doc(FirestorePaths.extra(invite.extraId));
 
       // 1) marca convite como aceito
       tx.update(inviteRef, {
@@ -86,6 +146,12 @@ class InvitesRepository {
         'activeExtraId': invite.extraId,
         'updatedAt': FieldValue.serverTimestamp(),
       });
+
+      // 4) incrementa contagem de membros
+      tx.update(extraRef, {
+        'memberCount': FieldValue.increment(1),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
     });
   }
 
@@ -95,5 +161,10 @@ class InvitesRepository {
       'status': 'declined',
       'respondedAt': FieldValue.serverTimestamp(),
     });
+  }
+
+  /// Cancela um convite (admin que enviou pode cancelar).
+  Future<void> cancelInvite(String inviteId) async {
+    await _invites.doc(inviteId).delete();
   }
 }

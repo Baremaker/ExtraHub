@@ -16,7 +16,9 @@ class Routes {
   static const String createExtra    = '/extras/new';
   static const String dashboard      = '/dashboard';
   static const String members        = '/members';
+  static const String memberDetail   = '/members/:uid';
   static const String projects       = '/projects';
+  static const String projectDetail  = '/projects/:id';
   static const String announcements  = '/announcements';
   static const String calendar       = '/calendar';
   static const String profile        = '/profile';
@@ -31,7 +33,9 @@ class Routes {
   static const String createExtraName    = 'createExtra';
   static const String dashboardName      = 'dashboard';
   static const String membersName        = 'members';
+  static const String memberDetailName   = 'memberDetail';
   static const String projectsName       = 'projects';
+  static const String projectDetailName  = 'projectDetail';
   static const String announcementsName  = 'announcements';
   static const String calendarName       = 'calendar';
   static const String profileName        = 'profile';

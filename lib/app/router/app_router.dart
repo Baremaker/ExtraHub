@@ -10,15 +10,15 @@ import '../../features/auth/presentation/screens/signup_screen.dart';
 import '../../features/dashboard/presentation/screens/dashboard_placeholder_screen.dart';
 import '../../features/extras/presentation/screens/choose_extra_screen.dart';
 import '../../features/extras/presentation/screens/create_extra_screen.dart';
+import '../../features/members/presentation/screens/member_detail_screen.dart';
+import '../../features/members/presentation/screens/members_screen.dart';
+import '../../features/profile/presentation/screens/my_profile_screen.dart';
+import '../../features/projects/presentation/screens/project_detail_screen.dart';
+import '../../features/projects/presentation/screens/projects_screen.dart';
 import '../../features/splash/presentation/screens/splash_screen.dart';
 import 'routes.dart';
 
 /// Refresh notifier exposto para o GoRouter.
-///
-/// `ChangeNotifier` cujo único propósito é expor publicamente o
-/// `notifyListeners`. O provider escuta os providers de auth via
-/// `ref.listen` e chama [refresh] quando algo muda, fazendo o GoRouter
-/// re-executar o `redirect`.
 class _RouterRefreshNotifier extends ChangeNotifier {
   void refresh() => notifyListeners();
 }
@@ -26,8 +26,6 @@ class _RouterRefreshNotifier extends ChangeNotifier {
 /// Provider do `GoRouter` da aplicação.
 final goRouterProvider = Provider<GoRouter>((ref) {
   final refresh = _RouterRefreshNotifier();
-  // `ref.listen` cuida do cleanup das subscriptions automaticamente quando
-  // o provider é descartado. Não precisamos guardar referências.
   ref.listen(authStateProvider, (_, _) => refresh.refresh());
   ref.listen(currentAppUserProvider, (_, _) => refresh.refresh());
   ref.onDispose(refresh.dispose);
@@ -37,7 +35,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     debugLogDiagnostics: kDebugMode,
     refreshListenable: refresh,
 
-    // ─── REDIRECT BASEADO EM ESTADO DE AUTH ────────────────────────────────
+    // ─── REDIRECT ──────────────────────────────────────────────────────────
     redirect: (context, state) {
       final loc = state.matchedLocation;
       final firebaseUser = ref.read(currentFirebaseUserProvider);
@@ -51,40 +49,34 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       final isAtChooseExtra =
           loc == Routes.chooseExtra || loc == Routes.createExtra;
 
-      // 1) Não autenticado → tela de auth
       if (firebaseUser == null) {
         if (isAtAuthFlow) return null;
         return Routes.login;
       }
 
-      // 2) Autenticado mas e-mail não verificado → tela de verificação
       if (!firebaseUser.emailVerified) {
         if (isAtVerifyEmail) return null;
         return Routes.verifyEmail;
       }
 
-      // 3) Autenticado e verificado, mas ainda carregando o doc do AppUser
-      //    → fica na splash
       if (appUserAsync.isLoading) {
         return isAtSplash ? null : Routes.splash;
       }
 
       final appUser = appUserAsync.value;
-
-      // 3b) Edge case: doc não existe (ex: criado fora do app, ou erro
-      //     transitório). Mantém na splash; o stream eventualmente atualiza.
       if (appUser == null) {
         return isAtSplash ? null : Routes.splash;
       }
 
-      // 4) Sem activeExtraId → escolher (ou criar) extra
       if (appUser.activeExtraId == null) {
         if (isAtChooseExtra) return null;
         return Routes.chooseExtra;
       }
 
-      // 5) Tudo certo → dashboard. Se está em splash/auth/verify, manda pra lá.
-      if (isAtSplash || isAtAuthFlow || isAtVerifyEmail) {
+      if (isAtSplash ||
+          isAtAuthFlow ||
+          isAtVerifyEmail ||
+          isAtChooseExtra) {
         return Routes.dashboard;
       }
       return null;
@@ -131,6 +123,37 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: Routes.dashboard,
         name: Routes.dashboardName,
         builder: (_, _) => const DashboardPlaceholderScreen(),
+      ),
+      GoRoute(
+        path: Routes.members,
+        name: Routes.membersName,
+        builder: (_, _) => const MembersScreen(),
+        routes: [
+          GoRoute(
+            path: ':uid',
+            name: Routes.memberDetailName,
+            builder: (context, state) =>
+                MemberDetailScreen(uid: state.pathParameters['uid']!),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: Routes.projects,
+        name: Routes.projectsName,
+        builder: (_, _) => const ProjectsScreen(),
+        routes: [
+          GoRoute(
+            path: ':id',
+            name: Routes.projectDetailName,
+            builder: (context, state) =>
+                ProjectDetailScreen(id: state.pathParameters['id']!),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: Routes.profile,
+        name: Routes.profileName,
+        builder: (_, _) => const MyProfileScreen(),
       ),
     ],
   );

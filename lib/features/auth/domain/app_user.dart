@@ -10,9 +10,12 @@ part 'app_user.g.dart';
 ///
 /// Não chamamos de `User` para evitar conflito com `firebase_auth.User`.
 ///
-/// Um usuário pode pertencer a várias extras (ver [extraIds]) e a `activeExtraId`
+/// Um usuário pode pertencer a várias extras (ver [extraIds]) e a [activeExtraId]
 /// é a última que ele estava visualizando — usada para abrir direto no dashboard
 /// dela quando volta ao app.
+///
+/// Campos acadêmicos ([course], [semester], [uspNumber]) e de contato ([phone])
+/// são opcionais. [skills] e [interests] são listas de tags livres.
 @freezed
 abstract class AppUser with _$AppUser {
   const factory AppUser({
@@ -21,7 +24,12 @@ abstract class AppUser with _$AppUser {
     required String displayName,
     @Default(null) String? photoURL,
     @Default(null) String? bio,
+    @Default(null) String? course,
+    @Default(null) int? semester,
+    @Default(null) String? uspNumber,
+    @Default(null) String? phone,
     @Default(<String>[]) List<String> skills,
+    @Default(<String>[]) List<String> interests,
     @Default(<String>[]) List<String> extraIds,
     @Default(null) String? activeExtraId,
     @TimestampConverter() required DateTime createdAt,
@@ -49,5 +57,16 @@ extension AppUserAvatarX on AppUser {
     if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
     return (parts.first.substring(0, 1) + parts.last.substring(0, 1))
         .toUpperCase();
+  }
+
+  /// Linha curta de descrição: "Eng. Computação · 5º período" se tiver dados,
+  /// senão `null`.
+  String? get academicLine {
+    if (course == null && semester == null) return null;
+    final parts = <String>[
+      ?course,
+      if (semester != null) '$semesterº período',
+    ];
+    return parts.join(' · ');
   }
 }
