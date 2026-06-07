@@ -19,6 +19,20 @@ final projectsProvider = StreamProvider<List<Project>>((ref) {
   return ref.watch(projectsRepositoryProvider).watchAll(extraId);
 });
 
+/// Projetos da extra ativa em que [uid] está (ou esteve) alocado na equipe.
+///
+/// Derivado de [projectsProvider]. Serve tanto para "Meus projetos" no
+/// dashboard quanto para o histórico de projetos no perfil de um membro ou
+/// ex-membro (HU-07/HU-08) — como `markAsInactive` não remove a pessoa de
+/// `project.members`, o histórico de projetos é preservado.
+final projectsForMemberProvider =
+    Provider.family<List<Project>, String>((ref, uid) {
+  final all = ref.watch(projectsProvider).value ?? const <Project>[];
+  return all
+      .where((p) => p.members.any((m) => m.uid == uid))
+      .toList(growable: false);
+});
+
 // ─── SINGLE PROJECT ───────────────────────────────────────────────────────
 
 /// Stream de um projeto específico na extra ativa.

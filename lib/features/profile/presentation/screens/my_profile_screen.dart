@@ -14,6 +14,7 @@ import '../../../auth/domain/app_user.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../members/domain/member.dart';
 import '../../../members/presentation/providers/members_providers.dart';
+import '../../../projects/presentation/widgets/member_projects_card.dart';
 import '../widgets/edit_profile_dialog.dart';
 
 /// Tela "Meu perfil" — vê e edita o próprio [AppUser] + mostra membership.
@@ -93,6 +94,8 @@ class _ProfileBody extends StatelessWidget {
             );
           },
         ),
+        const SizedBox(height: AppSpacing.md),
+        MemberProjectsCard(uid: user.uid),
       ],
     );
   }

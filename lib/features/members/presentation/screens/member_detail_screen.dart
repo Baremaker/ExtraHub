@@ -14,6 +14,7 @@ import '../../../../core/widgets/error_view.dart';
 import '../../../../core/widgets/skill_tag.dart';
 import '../../../auth/domain/app_user.dart';
 import '../../../extras/presentation/providers/extras_providers.dart';
+import '../../../projects/presentation/widgets/member_projects_card.dart';
 import '../../domain/member.dart';
 import '../providers/members_providers.dart';
 
@@ -78,6 +79,13 @@ class MemberDetailScreen extends ConsumerWidget {
                     ],
                   );
                 },
+              ),
+              const SizedBox(height: AppSpacing.md),
+              MemberProjectsCard(
+                uid: member.uid,
+                emptyLabel: member.status == MemberStatus.inactive
+                    ? 'Não participou de nenhum projeto.'
+                    : 'Nenhum projeto alocado.',
               ),
               if (isAdmin && !isMyself && extra != null) ...[
                 const SizedBox(height: AppSpacing.xl),
