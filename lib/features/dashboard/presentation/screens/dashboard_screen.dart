@@ -54,27 +54,33 @@ class DashboardScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.xxs),
           Text(
             isAdmin
-                ? 'Visão geral e atalhos de gestão da extra.'
-                : 'Seu resumo: projetos, avisos e próximos eventos.',
+                ? 'Visão geral, atalhos e gestão da extra.'
+                : 'Sua visão geral da extra.',
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: AppSpacing.xl),
 
+          // Contadores e atalhos de navegação — para todos os papéis (HU-05).
+          const _StatGrid(),
+          const SizedBox(height: AppSpacing.xl),
+          const _NavShortcuts(),
+
+          // Gestão — só admin.
           if (isAdmin) ...[
-            const _StatGrid(),
             const SizedBox(height: AppSpacing.xl),
             const _QuickActions(),
-            const SizedBox(height: AppSpacing.xl),
-          ] else ...[
-            if (user != null) ...[
-              MemberProjectsCard(
-                uid: user.uid,
-                title: 'Meus projetos',
-                emptyLabel: 'Você ainda não está alocado em nenhum projeto.',
-              ),
-              const SizedBox(height: AppSpacing.xl),
-            ],
           ],
+
+          // Conteúdo personalizado: projetos da pessoa.
+          if (user != null) ...[
+            const SizedBox(height: AppSpacing.xl),
+            MemberProjectsCard(
+              uid: user.uid,
+              title: 'Meus projetos',
+              emptyLabel: 'Você ainda não está alocado em nenhum projeto.',
+            ),
+          ],
+          const SizedBox(height: AppSpacing.xl),
 
           // Avisos + eventos: lado a lado no desktop, empilhados no mobile.
           LayoutBuilder(
@@ -232,6 +238,47 @@ class _QuickActions extends StatelessWidget {
             label: 'Novo evento',
             icon: Icons.event_outlined,
             onTap: () => showEventFormDialog(context),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// ATALHOS DE NAVEGAÇÃO (todos os papéis)
+// ════════════════════════════════════════════════════════════════════════════
+
+class _NavShortcuts extends StatelessWidget {
+  const _NavShortcuts();
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionCard(
+      title: 'Atalhos',
+      child: Wrap(
+        spacing: AppSpacing.sm,
+        runSpacing: AppSpacing.sm,
+        children: [
+          _ShortcutButton(
+            label: 'Projetos',
+            icon: Icons.folder_outlined,
+            onTap: () => context.goNamed(Routes.projectsName),
+          ),
+          _ShortcutButton(
+            label: 'Membros',
+            icon: Icons.people_outline,
+            onTap: () => context.goNamed(Routes.membersName),
+          ),
+          _ShortcutButton(
+            label: 'Avisos',
+            icon: Icons.campaign_outlined,
+            onTap: () => context.goNamed(Routes.announcementsName),
+          ),
+          _ShortcutButton(
+            label: 'Calendário',
+            icon: Icons.calendar_today_outlined,
+            onTap: () => context.goNamed(Routes.calendarName),
           ),
         ],
       ),
