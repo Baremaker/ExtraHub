@@ -31,6 +31,9 @@ class AppColors {
   static const Color accentDim  = Color(0xFF0A2A1E); // --accent-dim
   static const Color accentText = Color(0xFF5DCAA5); // --accent-text
   static const Color accentLite = Color(0xFF9FE1CB); // --accent-lite
+  // Verde mais escuro só para o FUNDO de botões com texto branco: garante
+  // contraste WCAG AA (4.9:1) que o `accent` puro não atinge (3.4:1).
+  static const Color accentStrong = Color(0xFF158055);
 
   // ─── VERMELHO ──────────────────────────────────────────────────────────────
   static const Color red     = Color(0xFFE24B4A);
@@ -64,5 +67,6 @@ class AppColors {
   // ─── TEXTO ─────────────────────────────────────────────────────────────────
   static const Color txtPrimary   = Color(0xFFE8EAF0);
   static const Color txtSecondary = Color(0xFF8892A4);
-  static const Color txtTertiary  = Color(0xFF4A5568);
+  // Clareado de #4A5568 para passar WCAG AA (5.1:1 sobre o fundo base).
+  static const Color txtTertiary  = Color(0xFF7A8699);
 }

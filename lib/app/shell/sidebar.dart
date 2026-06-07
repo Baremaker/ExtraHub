@@ -216,10 +216,12 @@ class _NavItem extends StatelessWidget {
         child: InkWell(
           borderRadius: AppRadius.radiusSm,
           onTap: enabled ? onTap : null,
-          child: Padding(
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 44),
+            alignment: Alignment.centerLeft,
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.md,
-              vertical: AppSpacing.sm,
+              vertical: AppSpacing.xs,
             ),
             child: Row(
               children: [
