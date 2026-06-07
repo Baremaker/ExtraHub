@@ -1,0 +1,15 @@
+{
+  "name": "extrahub-rules-tests",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Testes unitários das Firestore Security Rules do ExtraHub (Firebase Rules unit testing). Rodam contra o emulador do Firestore — nunca contra produção.",
+  "scripts": {
+    "test": "mocha rules.test.js --timeout 15000"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.1",
+    "firebase": "^12.14.0",
+    "mocha": "^11.7.6"
+  }
+}
