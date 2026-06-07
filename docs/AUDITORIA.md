@@ -38,6 +38,9 @@ eventos ("convocados" — HU-09).
 > fluxos estão quebrados em produção. Isso é coerente com a armadilha do
 > briefing ("quando algo funcionava e parou, suspeite de rules/config"). É o
 > primeiro item a validar no emulador (detalhe na seção 6).
+>
+> **✅ Resolvido no P0:** os 3 bloqueios foram confirmados por teste e
+> corrigidos. Ver §6 e `docs/testes/seguranca.md` (22 testes de rules passando).
 
 ---
 
@@ -100,9 +103,9 @@ Coerente com a decisão "3 papéis via isOwner, sem Super Admin".
 
 | HU | Feature | Status | Resumo |
 |----|---------|--------|--------|
-| HU-01 | Cadastro da Extra | 🟡 | Fluxo e transação OK no código, mas **bloqueado pelas rules** (ver §6). |
-| HU-02 | Login email USP | 🟡 | Login/verify/reset OK; `@usp.br` validado. **Criação do doc no signup bloqueada pelas rules** (§6). |
-| HU-03 | Gestão de Membros | 🟡 | Convite/cargo/inativar/filtros OK; **aceite de convite bloqueado pelas rules** (§6). |
+| HU-01 | Cadastro da Extra | ✅ | Fluxo e transação OK; bloqueio de rules **corrigido e testado** (§6 / P0). |
+| HU-02 | Login email USP | ✅ | Login/verify/reset OK; `@usp.br` validado; criação do doc no signup **corrigida** (§6 / P0). |
+| HU-03 | Gestão de Membros | ✅ | Convite/cargo/inativar/filtros OK; aceite de convite **corrigido** (§6 / P0). |
 | HU-04 | Gestão de Projetos | ✅ | CRUD completo, transações atômicas (`inProjectIds`, `projectCount`), líder, links, progresso. |
 | HU-05 | Dashboard | 🟡 | Só cards de contadores, **iguais para todo papel**; falta dashboard agregador por papel + texto "placeholder" hardcoded. |
 | HU-06 | Mural de Avisos | ✅ | Publicar/editar/fixar/excluir, fixados no topo, datas relativas pt-BR. (Nota: "urgência" tratada como "fixado".) |
@@ -225,6 +228,12 @@ testes funcionais + segurança + acessibilidade).
 - ✅ Owner protegido contra delete/alteração por outros admins.
 
 ### Achados (precisam de correção / validação no emulador)
+
+> **✅ ATUALIZAÇÃO (P0):** 6.1, 6.2 e 6.3 foram **corrigidos e testados** no
+> emulador (22 testes em `test_rules/`, relatório em `docs/testes/seguranca.md`).
+> 6.4 ficou como **risco residual aceito** (decisão de produto). As regras
+> corrigidas ainda **precisam ser deployadas** em produção (`firebase deploy
+> --only firestore:rules`) — ação externa, a confirmar.
 
 **6.1 🔴 Crítico — criação de membro referencia doc da mesma transação.**
 Na criação da extra (HU-01), a rule de `members/create` (ramo do dono) faz

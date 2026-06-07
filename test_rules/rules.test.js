@@ -77,10 +77,13 @@ function anonCtx() {
 async function seedBase() {
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
-    await setDoc(doc(db, 'users/owner'), { uid: 'owner', email: 'owner@usp.br', displayName: 'Owner' });
-    await setDoc(doc(db, 'users/alice'), { uid: 'alice', email: 'alice@usp.br', displayName: 'Alice' });
+    // createdAt é incluído porque as regras de update de users/extras fazem
+    // unchanged('createdAt') — e a rule lança erro se o campo não existir.
+    await setDoc(doc(db, 'users/owner'), { uid: 'owner', email: 'owner@usp.br', displayName: 'Owner', createdAt: serverTimestamp() });
+    await setDoc(doc(db, 'users/alice'), { uid: 'alice', email: 'alice@usp.br', displayName: 'Alice', createdAt: serverTimestamp() });
     await setDoc(doc(db, `extras/${EXTRA}`), {
       id: EXTRA, name: 'Extra A', ownerId: 'owner', memberCount: 2, projectCount: 0,
+      createdAt: serverTimestamp(),
     });
     await setDoc(doc(db, `extras/${EXTRA}/members/owner`), {
       uid: 'owner', email: 'owner@usp.br', displayName: 'Owner',
@@ -157,56 +160,83 @@ describe('✅ Isolamento multi-tenant', () => {
 });
 
 // ════════════════════════════════════════════════════════════════════════
-// 🔴 BLOQUEIO 6.2 — doc de usuário no signup (email ainda não verificado)
+// ✅ HU-02 — signup cria users/{uid} (corrigido: 6.2)
 // ════════════════════════════════════════════════════════════════════════
-describe('🔴 BLOQUEIO 6.2 — criar users/{uid} no signup', () => {
-  it('CONFIRMA bug: signup (email não verificado) NÃO consegue criar o próprio perfil', async () => {
+describe('✅ HU-02 — signup cria o próprio perfil (corrigido 6.2)', () => {
+  it('signup com e-mail @usp.br NÃO verificado cria o próprio perfil', async () => {
     const db = selfUnverified();
-    await assertFails(
+    await assertSucceeds(
       setDoc(doc(db, 'users/alice'), { uid: 'alice', email: 'alice@usp.br', displayName: 'Alice' }),
     );
   });
 
-  it('controle: com email verificado, criar o próprio perfil é permitido', async () => {
+  it('com e-mail verificado também cria o próprio perfil', async () => {
     const db = selfVerified();
     await assertSucceeds(
       setDoc(doc(db, 'users/alice'), { uid: 'alice', email: 'alice@usp.br', displayName: 'Alice' }),
+    );
+  });
+
+  it('NÃO pode criar o perfil de OUTRO uid', async () => {
+    const db = selfUnverified(); // alice
+    await assertFails(
+      setDoc(doc(db, 'users/bob'), { uid: 'bob', email: 'bob@usp.br', displayName: 'Bob' }),
+    );
+  });
+
+  it('NÃO pode escrever em outras coleções antes de verificar (ex.: criar extra)', async () => {
+    const db = selfUnverified();
+    await assertFails(
+      setDoc(doc(db, 'extras/nova'), { id: 'nova', name: 'X', ownerId: 'alice' }),
     );
   });
 });
 
 // ════════════════════════════════════════════════════════════════════════
-// 🔴 BLOQUEIO 6.1 — criar extra + membro do dono na MESMA transação
+// ✅ HU-01 — criar extra + membro do dono na MESMA transação (corrigido: 6.1)
 // ════════════════════════════════════════════════════════════════════════
-describe('🔴 BLOQUEIO 6.1 — criar extra (membro do dono na mesma transação)', () => {
-  it('CONFIRMA bug: batch que cria extra + membership do dono é NEGADO', async () => {
-    // alice precisa ter doc de usuário (createExtra lê/atualiza users/alice)
+describe('✅ HU-01 — criar extra (corrigido 6.1, getAfter)', () => {
+  async function seedAliceUser() {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      await setDoc(doc(ctx.firestore(), 'users/alice'),
-        { uid: 'alice', email: 'alice@usp.br', displayName: 'Alice', extraIds: [] });
+      await setDoc(doc(ctx.firestore(), 'users/alice'), {
+        uid: 'alice', email: 'alice@usp.br', displayName: 'Alice',
+        extraIds: [], createdAt: serverTimestamp(),
+      });
     });
+  }
+
+  it('PERMITE o batch que cria extra + membership do dono + atualiza o user', async () => {
+    await seedAliceUser();
     const db = selfVerified();
     const batch = writeBatch(db);
-    batch.set(doc(db, 'extras/nova'), { id: 'nova', name: 'Nova', ownerId: 'alice', memberCount: 1, projectCount: 0 });
+    batch.set(doc(db, 'extras/nova'), { id: 'nova', name: 'Nova', ownerId: 'alice', memberCount: 1, projectCount: 0, createdAt: serverTimestamp() });
     batch.set(doc(db, 'extras/nova/members/alice'), {
       uid: 'alice', email: 'alice@usp.br', displayName: 'Alice',
       role: 'admin', isOwner: true, status: 'active',
     });
-    batch.update(doc(db, 'users/alice'), { extraIds: ['nova'], activeExtraId: 'nova' });
+    batch.update(doc(db, 'users/alice'), { extraIds: ['nova'], activeExtraId: 'nova', updatedAt: serverTimestamp() });
+    await assertSucceeds(batch.commit());
+  });
+
+  it('NEGA se a extra criada no batch tiver ownerId diferente do criador', async () => {
+    await seedAliceUser();
+    const db = selfVerified();
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'extras/nova'), { id: 'nova', name: 'Nova', ownerId: 'outro', memberCount: 1, projectCount: 0, createdAt: serverTimestamp() });
+    batch.set(doc(db, 'extras/nova/members/alice'), {
+      uid: 'alice', email: 'alice@usp.br', displayName: 'Alice',
+      role: 'admin', isOwner: true, status: 'active',
+    });
     await assertFails(batch.commit());
   });
 
-  it('prova da causa: se a extra JÁ existe, criar o membership do dono é permitido', async () => {
-    // Isola que o problema é o get() não enxergar a extra criada no mesmo batch.
-    await testEnv.withSecurityRulesDisabled(async (ctx) => {
-      const db = ctx.firestore();
-      await setDoc(doc(db, 'users/alice'), { uid: 'alice', email: 'alice@usp.br', displayName: 'Alice' });
-      await setDoc(doc(db, 'extras/nova'), { id: 'nova', name: 'Nova', ownerId: 'alice' });
-    });
-    const db = selfVerified();
-    await assertSucceeds(
-      setDoc(doc(db, 'extras/nova/members/alice'), {
-        uid: 'alice', email: 'alice@usp.br', displayName: 'Alice',
+  it('NEGA criar membership isOwner=true numa extra de OUTRO dono', async () => {
+    // bob não é admin da extraA (dono = owner) e tenta se autopromover a dono.
+    await seedBase();
+    const db = outsiderVerified();
+    await assertFails(
+      setDoc(doc(db, `extras/${EXTRA}/members/bob`), {
+        uid: 'bob', email: 'bob@usp.br', displayName: 'Bob',
         role: 'admin', isOwner: true, status: 'active',
       }),
     );
@@ -214,28 +244,62 @@ describe('🔴 BLOQUEIO 6.1 — criar extra (membro do dono na mesma transação
 });
 
 // ════════════════════════════════════════════════════════════════════════
-// 🔴 BLOQUEIO 6.3 — aceitar convite (convidado cria o próprio membership)
+// ✅ HU-03 — aceitar convite (corrigido: 6.3, id determinístico)
 // ════════════════════════════════════════════════════════════════════════
-describe('🔴 BLOQUEIO 6.3 — aceitar convite', () => {
-  async function seedInvite() {
+describe('✅ HU-03 — aceitar convite (corrigido 6.3)', () => {
+  const INV = `${EXTRA}__bob@usp.br`; // id determinístico
+
+  async function seedInvite({ role = 'member', expired = false } = {}) {
     await seedBase();
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       const db = ctx.firestore();
-      await setDoc(doc(db, 'users/bob'), { uid: 'bob', email: 'bob@usp.br', displayName: 'Bob', extraIds: [] });
-      await setDoc(doc(db, 'invites/inv1'), {
-        id: 'inv1', email: 'bob@usp.br', extraId: EXTRA, extraName: 'Extra A',
-        role: 'member', invitedBy: { uid: 'owner', displayName: 'Owner' }, status: 'pending',
-        // createdAt/expiresAt são obrigatórios: a regra de update faz unchanged('createdAt')
-        // e lança erro se o campo não existir (o cliente real sempre grava ambos).
+      await setDoc(doc(db, 'users/bob'), {
+        uid: 'bob', email: 'bob@usp.br', displayName: 'Bob',
+        extraIds: [], createdAt: serverTimestamp(),
+      });
+      await setDoc(doc(db, `invites/${INV}`), {
+        id: INV, email: 'bob@usp.br', extraId: EXTRA, extraName: 'Extra A',
+        role, invitedBy: { uid: 'owner', displayName: 'Owner' }, status: 'pending',
         createdAt: serverTimestamp(),
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        expiresAt: new Date(Date.now() + (expired ? -1 : 7 * 24 * 60 * 60 * 1000)),
       });
     });
   }
 
-  it('CONFIRMA bug: convidado NÃO consegue criar o próprio doc de membro', async () => {
+  it('PERMITE o batch completo do aceite (convite + membership + user + memberCount)', async () => {
     await seedInvite();
-    const db = outsiderVerified(); // bob@usp.br, ainda não-membro
+    const db = outsiderVerified(); // bob
+    const batch = writeBatch(db);
+    batch.update(doc(db, `invites/${INV}`), { status: 'accepted', respondedAt: serverTimestamp() });
+    batch.set(doc(db, `extras/${EXTRA}/members/bob`), {
+      uid: 'bob', email: 'bob@usp.br', displayName: 'Bob',
+      role: 'member', isOwner: false, status: 'active',
+    });
+    batch.update(doc(db, 'users/bob'), { extraIds: [EXTRA], activeExtraId: EXTRA, updatedAt: serverTimestamp() });
+    batch.update(doc(db, `extras/${EXTRA}`), { memberCount: increment(1), updatedAt: serverTimestamp() });
+    await assertSucceeds(batch.commit());
+  });
+
+  it('PERMITE o convidado criar o próprio membership (papel batendo o convite)', async () => {
+    await seedInvite();
+    const db = outsiderVerified();
+    await assertSucceeds(
+      setDoc(doc(db, `extras/${EXTRA}/members/bob`), {
+        uid: 'bob', email: 'bob@usp.br', displayName: 'Bob',
+        role: 'member', isOwner: false, status: 'active',
+      }),
+    );
+  });
+
+  it('PERMITE incrementar memberCount em +1 ao aceitar', async () => {
+    await seedInvite();
+    const db = outsiderVerified();
+    await assertSucceeds(updateDoc(doc(db, `extras/${EXTRA}`), { memberCount: increment(1) }));
+  });
+
+  it('NEGA criar membership SEM convite', async () => {
+    await seedBase(); // sem convite para bob
+    const db = outsiderVerified();
     await assertFails(
       setDoc(doc(db, `extras/${EXTRA}/members/bob`), {
         uid: 'bob', email: 'bob@usp.br', displayName: 'Bob',
@@ -244,19 +308,42 @@ describe('🔴 BLOQUEIO 6.3 — aceitar convite', () => {
     );
   });
 
-  it('CONFIRMA bug: convidado NÃO consegue incrementar memberCount da extra', async () => {
-    await seedInvite();
+  it('NEGA criar membership com papel acima do convite (convite=member, tenta admin)', async () => {
+    await seedInvite({ role: 'member' });
     const db = outsiderVerified();
     await assertFails(
-      updateDoc(doc(db, `extras/${EXTRA}`), { memberCount: increment(1) }),
+      setDoc(doc(db, `extras/${EXTRA}/members/bob`), {
+        uid: 'bob', email: 'bob@usp.br', displayName: 'Bob',
+        role: 'admin', isOwner: false, status: 'active',
+      }),
     );
   });
 
-  it('controle: marcar o convite como aceito (sozinho) é permitido ao destinatário', async () => {
+  it('NEGA aceitar convite EXPIRADO', async () => {
+    await seedInvite({ expired: true });
+    const db = outsiderVerified();
+    await assertFails(
+      setDoc(doc(db, `extras/${EXTRA}/members/bob`), {
+        uid: 'bob', email: 'bob@usp.br', displayName: 'Bob',
+        role: 'member', isOwner: false, status: 'active',
+      }),
+    );
+  });
+
+  it('NEGA incrementar memberCount em mais de +1 (anti-abuso)', async () => {
     await seedInvite();
     const db = outsiderVerified();
-    await assertSucceeds(
-      updateDoc(doc(db, 'invites/inv1'), { status: 'accepted', respondedAt: serverTimestamp() }),
+    await assertFails(updateDoc(doc(db, `extras/${EXTRA}`), { memberCount: increment(2) }));
+  });
+
+  it('NEGA usar o convite de outra pessoa (e-mail diferente)', async () => {
+    await seedInvite(); // convite é para bob@usp.br
+    const db = testEnv.authenticatedContext('eve', tok('eve@usp.br', true)).firestore();
+    await assertFails(
+      setDoc(doc(db, `extras/${EXTRA}/members/eve`), {
+        uid: 'eve', email: 'eve@usp.br', displayName: 'Eve',
+        role: 'member', isOwner: false, status: 'active',
+      }),
     );
   });
 });

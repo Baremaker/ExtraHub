@@ -21,11 +21,18 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ─── HELPERS ──────────────────────────────────────────────────────
-    function isAuthed() {
+    // Logado com e-mail @usp.br, SEM exigir verificação. Usado apenas na
+    // criação do próprio doc users/{uid} no signup (antes da verificação).
+    function isUspEmail() {
       return request.auth != null
           && request.auth.token.email != null
-          && request.auth.token.email_verified == true
           && request.auth.token.email.matches('.*@usp[.]br$');
+    }
+
+    // Acesso pleno: e-mail @usp.br E verificado. Padrão para tudo, exceto o
+    // create de users/{uid}.
+    function isAuthed() {
+      return isUspEmail() && request.auth.token.email_verified == true;
     }
 
     function isSelf(uid) {
@@ -55,6 +62,20 @@ service cloud.firestore {
       return request.resource.data[field] == resource.data[field];
     }
 
+    // ─── CONVITES (helpers) ───────────────────────────────────────────
+    // Convite tem id determinístico: invites/{extraId}__{email}. Isso permite
+    // a rule localizar o convite do usuário atual sem conhecer um id aleatório,
+    // e assim autorizar o convidado a criar o próprio membership ao aceitar.
+    function inviteDoc(extraId) {
+      return get(/databases/$(database)/documents/invites/$(extraId + '__' + request.auth.token.email));
+    }
+    function hasValidInvite(extraId) {
+      return isAuthed()
+          && exists(/databases/$(database)/documents/invites/$(extraId + '__' + request.auth.token.email))
+          && inviteDoc(extraId).data.status == 'pending'
+          && request.time < inviteDoc(extraId).data.expiresAt;
+    }
+
     // =================================================================
     // USERS
     // =================================================================
@@ -64,9 +85,11 @@ service cloud.firestore {
       // sensível além de email @usp.br.
       allow read: if isAuthed();
 
-      // Criação: só o próprio user, e o uid do doc precisa bater com o
-      // auth.uid.
-      allow create: if isSelf(uid)
+      // Criação no signup: precisa ser ANTES da verificação de e-mail (senão o
+      // perfil nunca é criado e o usuário trava no fluxo). Exige @usp.br e que
+      // o doc seja do próprio user.
+      allow create: if isUspEmail()
+                    && request.auth.uid == uid
                     && request.resource.data.uid == uid
                     && request.resource.data.email == request.auth.token.email;
 
@@ -93,11 +116,18 @@ service cloud.firestore {
       allow create: if isAuthed()
                     && request.resource.data.ownerId == request.auth.uid;
 
-      // Atualizar: apenas admins. Owner só pode ser mudado pelo próprio
-      // owner (em fluxo "transferir propriedade", se vier).
-      allow update: if isAdmin(extraId)
-                    && unchanged('createdAt')
-                    && (unchanged('ownerId') || isOwner(extraId));
+      // Atualizar:
+      //   * Admins: alteram a extra (createdAt imutável; ownerId só o owner).
+      //   * Convidado entrando agora: pode SÓ incrementar memberCount (+1) e
+      //     updatedAt, e somente se tiver um convite pendente válido.
+      allow update: if (isAdmin(extraId)
+                        && unchanged('createdAt')
+                        && (unchanged('ownerId') || isOwner(extraId)))
+                    || (hasValidInvite(extraId)
+                        && request.resource.data.diff(resource.data)
+                            .affectedKeys().hasOnly(['memberCount', 'updatedAt'])
+                        && request.resource.data.memberCount
+                            == resource.data.memberCount + 1);
 
       // Deletar: apenas owner. (Cuidado: subcollections precisam ser
       // limpadas separadamente — Firestore não cascata.)
@@ -107,16 +137,23 @@ service cloud.firestore {
       match /members/{memberUid} {
         allow read: if isMember(extraId);
 
-        // Criação: por admin (convidando alguém manualmente) OU pelo
-        // próprio user no momento de criar a extra (quando o doc já não
-        // existe). Validar isOwner=true só permitido se for o ownerId
-        // da extra-pai.
+        // Criação, em 3 cenários:
+        //   1. Admin convidando/adicionando alguém manualmente.
+        //   2. Dono criando a extra: o membership é criado no MESMO batch que a
+        //      extra, então usamos getAfter() (get() não enxergaria a extra
+        //      recém-criada na mesma transação).
+        //   3. Convidado aceitando: cria o PRÓPRIO membership (isOwner=false)
+        //      desde que exista convite pendente válido e o papel bata.
         allow create: if isAuthed()
                       && (isAdmin(extraId)
                           || (isSelf(memberUid)
                               && request.resource.data.role == 'admin'
                               && request.resource.data.isOwner == true
-                              && get(/databases/$(database)/documents/extras/$(extraId)).data.ownerId == request.auth.uid));
+                              && getAfter(/databases/$(database)/documents/extras/$(extraId)).data.ownerId == request.auth.uid)
+                          || (isSelf(memberUid)
+                              && request.resource.data.isOwner == false
+                              && hasValidInvite(extraId)
+                              && request.resource.data.role == inviteDoc(extraId).data.role));
 
         // Atualização:
         //   * Admin pode alterar role/status/position de qualquer membro

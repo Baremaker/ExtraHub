@@ -46,21 +46,26 @@ class InvitesRepository {
   }) async {
     final normalizedEmail = email.trim().toLowerCase();
 
-    // Checa duplicata
-    final existing = await _invites
-        .where('extraId', isEqualTo: extraId)
-        .where('email', isEqualTo: normalizedEmail)
-        .where('status', isEqualTo: 'pending')
-        .limit(1)
-        .get();
+    // Id determinístico: 1 convite por (extra, e-mail). É o que permite às
+    // security rules localizarem o convite (sem id aleatório) ao autorizar o
+    // aceite — ver `hasValidInvite` em firestore.rules.
+    final ref = _invites.doc('${extraId}__$normalizedEmail');
 
-    if (existing.docs.isNotEmpty) {
-      throw StateError('Já existe um convite pendente para este e-mail.');
+    // Bloqueia reenvio se já houver convite pendente e não expirado. (Um doc
+    // antigo recusado/expirado no mesmo id pode ser sobrescrito normalmente.)
+    final existing = await ref.get();
+    if (existing.exists) {
+      final data = existing.data();
+      final expiresAtTs = data?['expiresAt'];
+      final notExpired = expiresAtTs is Timestamp
+          ? DateTime.now().isBefore(expiresAtTs.toDate())
+          : true;
+      if (data?['status'] == 'pending' && notExpired) {
+        throw StateError('Já existe um convite pendente para este e-mail.');
+      }
     }
 
-    final ref = _invites.doc();
-    final now = DateTime.now();
-    final expiresAt = now.add(const Duration(days: 7));
+    final expiresAt = DateTime.now().add(const Duration(days: 7));
 
     await ref.set({
       'id': ref.id,
