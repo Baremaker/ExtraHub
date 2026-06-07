@@ -20,10 +20,12 @@ class MemberProjectsCard extends ConsumerWidget {
   const MemberProjectsCard({
     super.key,
     required this.uid,
+    this.title = 'Projetos',
     this.emptyLabel = 'Nenhum projeto alocado.',
   });
 
   final String uid;
+  final String title;
   final String emptyLabel;
 
   @override
@@ -43,7 +45,7 @@ class MemberProjectsCard extends ConsumerWidget {
           Row(
             children: [
               Text(
-                'Projetos',
+                title,
                 style: Theme.of(context).textTheme.headlineMedium,
               ),
               const SizedBox(width: AppSpacing.sm),

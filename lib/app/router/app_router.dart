@@ -9,7 +9,7 @@ import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/signup_screen.dart';
 import '../../features/calendar/presentation/screens/calendar_screen.dart';
-import '../../features/dashboard/presentation/screens/dashboard_placeholder_screen.dart';
+import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../../features/extras/presentation/screens/choose_extra_screen.dart';
 import '../../features/extras/presentation/screens/create_extra_screen.dart';
 import '../../features/members/presentation/screens/member_detail_screen.dart';
@@ -120,7 +120,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.dashboard,
         name: Routes.dashboardName,
-        builder: (_, _) => const DashboardPlaceholderScreen(),
+        builder: (_, _) => const DashboardScreen(),
       ),
       GoRoute(
         path: Routes.members,
