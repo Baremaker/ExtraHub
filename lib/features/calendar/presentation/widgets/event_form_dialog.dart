@@ -9,6 +9,7 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../auth/presentation/providers/auth_providers.dart';
 import '../../../extras/presentation/providers/extras_providers.dart';
+import '../../../members/presentation/providers/members_providers.dart';
 import '../../../projects/presentation/providers/projects_providers.dart';
 import '../../domain/app_event.dart';
 import '../providers/events_providers.dart';
@@ -47,6 +48,7 @@ class _EventFormDialogState extends ConsumerState<_EventFormDialog> {
   TimeOfDay? _endTime;
   late bool _allDay;
   String? _projectId;
+  late List<EventInvitee> _invitees;
 
   final _formKey = GlobalKey<FormState>();
   bool _busy = false;
@@ -63,6 +65,7 @@ class _EventFormDialogState extends ConsumerState<_EventFormDialog> {
     _locationCtrl = TextEditingController(text: e?.location ?? '');
     _allDay = e?.allDay ?? false;
     _projectId = e?.relatedProjectId;
+    _invitees = List.of(e?.invitees ?? const <EventInvitee>[]);
 
     final startSeed = e?.startDate ?? widget.initialDate ?? DateTime.now();
     _startDate = DateTime(startSeed.year, startSeed.month, startSeed.day);
@@ -178,6 +181,7 @@ class _EventFormDialogState extends ConsumerState<_EventFormDialog> {
           allDay: _allDay,
           location: _locationCtrl.text,
           relatedProjectId: _projectId,
+          invitees: _invitees,
         );
       } else {
         await repo.create(
@@ -189,6 +193,7 @@ class _EventFormDialogState extends ConsumerState<_EventFormDialog> {
           allDay: _allDay,
           location: _locationCtrl.text,
           relatedProjectId: _projectId,
+          invitees: _invitees,
           createdBy: firebaseUser.uid,
         );
       }
@@ -203,6 +208,7 @@ class _EventFormDialogState extends ConsumerState<_EventFormDialog> {
   @override
   Widget build(BuildContext context) {
     final projects = ref.watch(projectsProvider).value ?? const [];
+    final membersAsync = ref.watch(activeMembersProvider);
 
     return AlertDialog(
       title: Text(_isEdit ? 'Editar evento' : 'Novo evento'),
@@ -351,6 +357,58 @@ class _EventFormDialogState extends ConsumerState<_EventFormDialog> {
                     ],
                   ),
                 ],
+
+                const SizedBox(height: AppSpacing.lg),
+                Text(
+                  'Convocados (opcional)',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: AppColors.txtSecondary,
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                membersAsync.when(
+                  loading: () => const Padding(
+                    padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                    child: LinearProgressIndicator(),
+                  ),
+                  error: (_, _) => Text(
+                    'Não foi possível carregar os membros.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  data: (members) => members.isEmpty
+                      ? Text(
+                          'Nenhum membro ativo para convocar.',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        )
+                      : Wrap(
+                          spacing: AppSpacing.sm,
+                          runSpacing: AppSpacing.xs,
+                          children: members.map((m) {
+                            final selected =
+                                _invitees.any((i) => i.uid == m.uid);
+                            return FilterChip(
+                              label: Text(m.displayName),
+                              selected: selected,
+                              onSelected: _busy
+                                  ? null
+                                  : (sel) => setState(() {
+                                        if (sel) {
+                                          _invitees.add(
+                                            EventInvitee(
+                                              uid: m.uid,
+                                              displayName: m.displayName,
+                                            ),
+                                          );
+                                        } else {
+                                          _invitees.removeWhere(
+                                            (i) => i.uid == m.uid,
+                                          );
+                                        }
+                                      }),
+                            );
+                          }).toList(),
+                        ),
+                ),
 
                 if (_error != null) ...[
                   const SizedBox(height: AppSpacing.md),

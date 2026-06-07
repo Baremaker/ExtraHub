@@ -107,11 +107,15 @@ Coerente com a decisão "3 papéis via isOwner, sem Super Admin".
 | HU-02 | Login email USP | ✅ | Login/verify/reset OK; `@usp.br` validado; criação do doc no signup **corrigida** (§6 / P0). |
 | HU-03 | Gestão de Membros | ✅ | Convite/cargo/inativar/filtros OK; aceite de convite **corrigido** (§6 / P0). |
 | HU-04 | Gestão de Projetos | ✅ | CRUD completo, transações atômicas (`inProjectIds`, `projectCount`), líder, links, progresso. |
-| HU-05 | Dashboard | 🟡 | Só cards de contadores, **iguais para todo papel**; falta dashboard agregador por papel + texto "placeholder" hardcoded. |
+| HU-05 | Dashboard | ✅ | Dashboard por papel (P2): membro vê projetos/avisos/eventos; admin vê visão geral + atalhos de gestão. |
 | HU-06 | Mural de Avisos | ✅ | Publicar/editar/fixar/excluir, fixados no topo, datas relativas pt-BR. (Nota: "urgência" tratada como "fixado".) |
-| HU-07 | Perfil do Membro | 🟡 | Ver/editar dados + skills/interesses OK; **falta listar os projetos alocados** do membro. |
-| HU-08 | Histórico de Ex-membros | 🟡 | Inativar (preserva doc), filtro "Ex-membros", reativar, badge — OK; **falta "projetos" no perfil do ex-membro**. |
-| HU-09 | Calendário de Eventos | 🟡 | Calendário próprio (sem lib), lista, all-day, projeto associado — OK; **falta "convocados"** (model + form). |
+| HU-07 | Perfil do Membro | ✅ | Ver/editar dados + skills/interesses; projetos alocados listados no perfil (P2). |
+| HU-08 | Histórico de Ex-membros | ✅ | Inativar (preserva doc), filtro, reativar, badge, e projetos do ex-membro no detalhe (P2). |
+| HU-09 | Calendário de Eventos | ✅ | Calendário próprio, lista, all-day, projeto associado, e "convocados" (model+form+exibição, P2). |
+
+> **✅ ATUALIZAÇÃO (P2):** HU-05, HU-07, HU-08 e HU-09 foram concluídas (commits
+> `feat(dashboard)`, `feat(profile)`, `feat(calendar)`). Os detalhes por HU
+> abaixo descrevem o **estado original** da auditoria (Fase 0).
 
 ### Detalhamento
 

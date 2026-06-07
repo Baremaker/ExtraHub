@@ -33,6 +33,7 @@ class EventsRepository {
     bool allDay = false,
     String? location,
     String? relatedProjectId,
+    List<EventInvitee> invitees = const [],
     required String createdBy,
   }) async {
     final ref = _coll(extraId).doc();
@@ -47,6 +48,7 @@ class EventsRepository {
       'location':
           (location?.trim().isEmpty ?? true) ? null : location!.trim(),
       'relatedProjectId': relatedProjectId,
+      'invitees': invitees.map((i) => i.toJson()).toList(),
       'createdAt': FieldValue.serverTimestamp(),
       'createdBy': createdBy,
     });
@@ -63,6 +65,7 @@ class EventsRepository {
     bool allDay = false,
     String? location,
     String? relatedProjectId,
+    List<EventInvitee> invitees = const [],
   }) async {
     await _doc(extraId, eventId).update({
       'title': title.trim(),
@@ -74,6 +77,7 @@ class EventsRepository {
       'location':
           (location?.trim().isEmpty ?? true) ? null : location!.trim(),
       'relatedProjectId': relatedProjectId,
+      'invitees': invitees.map((i) => i.toJson()).toList(),
     });
   }
 

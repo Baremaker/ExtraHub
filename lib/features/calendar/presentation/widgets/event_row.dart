@@ -4,6 +4,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_radius.dart';
 import '../../../../app/theme/app_spacing.dart';
 import '../../../../core/extensions/date_format_x.dart';
+import '../../../../core/widgets/avatar_stack.dart';
 import '../../domain/app_event.dart';
 
 /// Linha de evento estilo `.row-item` do protótipo: data à esquerda
@@ -103,6 +104,30 @@ class EventRow extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+                    if (event.invitees.isNotEmpty) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      Row(
+                        children: [
+                          AvatarStack(
+                            specs: event.invitees
+                                .map(
+                                  (i) => AvatarSpec(
+                                    initials: _initialsFor(i.displayName),
+                                    seed: i.uid,
+                                  ),
+                                )
+                                .toList(),
+                            maxVisible: 4,
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Text(
+                            '${event.invitees.length} '
+                            'convocado${event.invitees.length > 1 ? 's' : ''}',
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -147,5 +172,13 @@ class EventRow extends StatelessWidget {
       return '$time · ${event.location}';
     }
     return time;
+  }
+
+  static String _initialsFor(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) return '?';
+    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+    return (parts.first.substring(0, 1) + parts.last.substring(0, 1))
+        .toUpperCase();
   }
 }

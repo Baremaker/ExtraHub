@@ -6,6 +6,18 @@ import '../../../core/firestore/timestamp_converter.dart';
 part 'app_event.freezed.dart';
 part 'app_event.g.dart';
 
+/// Pessoa convocada para um evento (denormalizado, como em projetos).
+@freezed
+abstract class EventInvitee with _$EventInvitee {
+  const factory EventInvitee({
+    required String uid,
+    required String displayName,
+  }) = _EventInvitee;
+
+  factory EventInvitee.fromJson(Map<String, dynamic> json) =>
+      _$EventInviteeFromJson(json);
+}
+
 /// Evento no calendário da extra.
 ///
 /// Não chamamos de `Event` para evitar conflito com o `dart:html` Event
@@ -21,6 +33,7 @@ abstract class AppEvent with _$AppEvent {
     @Default(false) bool allDay,
     @Default(null) String? location,
     @Default(null) String? relatedProjectId,
+    @Default(<EventInvitee>[]) List<EventInvitee> invitees,
     @TimestampConverter() required DateTime createdAt,
     required String createdBy,
   }) = _AppEvent;
