@@ -40,8 +40,7 @@ enum AvatarPalette {
   }
 }
 
-/// Avatar circular com inicial(is). Quando [photoURL] estiver disponível no
-/// futuro, usamos como prioridade — por enquanto sempre renderiza inicial.
+/// Avatar circular com inicial(is) sobre uma cor de fundo determinística.
 class AppAvatar extends StatelessWidget {
   const AppAvatar({
     super.key,
@@ -49,7 +48,6 @@ class AppAvatar extends StatelessWidget {
     this.size = AvatarSize.md,
     this.palette,
     this.seed,
-    this.photoURL,
   });
 
   /// Iniciais a exibir (ex: "FM"). Recomenda-se 1-2 caracteres.
@@ -61,9 +59,6 @@ class AppAvatar extends StatelessWidget {
 
   /// String usada para escolher cor determinística (geralmente o uid ou o nome).
   final String? seed;
-
-  /// Reservado para o futuro (foto via Firebase Storage).
-  final String? photoURL;
 
   @override
   Widget build(BuildContext context) {

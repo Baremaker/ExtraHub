@@ -25,8 +25,6 @@ class Sidebar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final activeExtra = ref.watch(activeExtraProvider).value;
     final appUser = ref.watch(currentAppUserProvider).value;
-    final isAdmin =
-        ref.watch(currentMembershipProvider).value?.role.name == 'admin';
     final loc = GoRouterState.of(context).matchedLocation;
 
     return Container(
@@ -132,17 +130,6 @@ class Sidebar extends ConsumerWidget {
                   active: false,
                   onTap: () => _switchExtra(ref),
                 ),
-                if (isAdmin) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  const _NavSection(label: 'ADMINISTRAÇÃO'),
-                  _NavItem(
-                    label: 'Configurações',
-                    icon: Icons.settings_outlined,
-                    active: false,
-                    enabled: false,
-                    onTap: () {},
-                  ),
-                ],
               ],
             ),
           ),
@@ -190,22 +177,16 @@ class _NavItem extends StatelessWidget {
     required this.icon,
     required this.active,
     required this.onTap,
-    this.enabled = true,
   });
 
   final String label;
   final IconData icon;
   final bool active;
   final VoidCallback onTap;
-  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
-    final fg = active
-        ? AppColors.accentText
-        : enabled
-            ? AppColors.txtPrimary
-            : AppColors.txtTertiary;
+    final fg = active ? AppColors.accentText : AppColors.txtPrimary;
     final bg = active ? AppColors.accentDim : Colors.transparent;
 
     return Padding(
@@ -215,7 +196,7 @@ class _NavItem extends StatelessWidget {
         borderRadius: AppRadius.radiusSm,
         child: InkWell(
           borderRadius: AppRadius.radiusSm,
-          onTap: enabled ? onTap : null,
+          onTap: onTap,
           child: Container(
             constraints: const BoxConstraints(minHeight: 44),
             alignment: Alignment.centerLeft,
@@ -237,15 +218,6 @@ class _NavItem extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (!enabled)
-                  const Text(
-                    'em breve',
-                    style: TextStyle(
-                      fontSize: 9,
-                      color: AppColors.txtTertiary,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
               ],
             ),
           ),

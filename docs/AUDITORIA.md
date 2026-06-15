@@ -1,5 +1,13 @@
 # Auditoria do ExtraHub — Fase 0
 
+> ⚠️ **DOCUMENTO HISTÓRICO (Fase 0).** Descreve o estado do repositório em
+> **06/06/2026**, antes dos commits que concluíram HU-05/07/08/09, as correções
+> de Firestore Rules, os testes e a acessibilidade. **Não reflete o estado
+> atual** — vários itens marcados abaixo como "parcial / placeholder /
+> incompleto" **já foram finalizados**. Para o estado real e a lista de
+> pendências remanescentes, ver `analise_pendencias.txt` na raiz do projeto.
+> Mantido apenas como registro do processo.
+
 > Documento de auditoria para a Entrega 2 de SSC0961. Mapeia o estado real do
 > repositório contra as 9 Histórias de Usuário e contra o que o relatório final
 > cobra (testes, segurança, acessibilidade, build nas 3 plataformas).

@@ -40,7 +40,7 @@ lib/
 │   ├── extensions/            # extensions sobre tipos do Dart/Flutter
 │   └── utils/                 # helpers diversos
 └── features/                  # uma pasta por feature de negócio
-    ├── splash/                # tela de splash (smoke test atualmente)
+    ├── splash/                # tela de splash + redirect inicial
     ├── auth/                  # login, signup, autenticação
     ├── extras/                # cadastro/seleção da extra (organização)
     ├── members/               # gestão de membros
