@@ -246,33 +246,38 @@ class _MembersGrid extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Grid responsivo: 1 / 2 / 3 / 4 colunas conforme largura.
+        // Grid responsivo via Wrap (mesmo padrão de ProjectsScreen): a altura
+        // de cada card acompanha o conteúdo, evitando overflow no mobile.
+        const gap = AppSpacing.md;
         final width = constraints.maxWidth;
-        final columns = width < 480
+        final cols = width < 480
             ? 1
             : width < 720
                 ? 2
                 : width < 1080
                     ? 3
                     : 4;
-        return GridView.count(
-          crossAxisCount: columns,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: AppSpacing.md,
-          mainAxisSpacing: AppSpacing.md,
-          childAspectRatio: 1.0,
+        final cardWidth = (width - gap * (cols - 1)) / cols;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
           children: [
-            ...members.map(
-              (m) => MemberCard(
-                member: m,
-                onTap: () => context.pushNamed(
-                  Routes.memberDetailName,
-                  pathParameters: {'uid': m.uid},
+            for (final m in members)
+              SizedBox(
+                width: cardWidth,
+                child: MemberCard(
+                  member: m,
+                  onTap: () => context.pushNamed(
+                    Routes.memberDetailName,
+                    pathParameters: {'uid': m.uid},
+                  ),
                 ),
               ),
-            ),
-            if (showInviteCard) InviteMemberCard(onTap: onInvite),
+            if (showInviteCard)
+              SizedBox(
+                width: cardWidth,
+                child: InviteMemberCard(onTap: onInvite),
+              ),
           ],
         );
       },

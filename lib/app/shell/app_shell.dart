@@ -17,8 +17,9 @@ const double kAppShellBreakpoint = 768;
 ///     conteúdo (topbar + child) à direita.
 ///
 /// Cada screen passa [title], [subtitle] (opcional, ex: "24 membros ativos")
-/// e [actions] (botões à direita da topbar). [child] é o conteúdo principal,
-/// já com seu próprio scroll se necessário.
+/// e [actions] (botões à direita da topbar). [child] é o conteúdo principal;
+/// o AppShell já o envolve num scroll vertical em ambos os layouts (mobile e
+/// desktop), então as telas passam um `Column` simples.
 class AppShell extends StatelessWidget {
   const AppShell({
     super.key,
@@ -79,7 +80,10 @@ class AppShell extends StatelessWidget {
         toolbarHeight: 64,
       ),
       body: SafeArea(
-        child: Padding(padding: contentPadding, child: child),
+        child: SingleChildScrollView(
+          padding: contentPadding,
+          child: child,
+        ),
       ),
     );
   }

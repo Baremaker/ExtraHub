@@ -26,7 +26,7 @@ class DateFormatX {
   static (String day, String month) dayMonth(DateTime when) {
     return (
       DateFormat('dd').format(when),
-      DateFormat('MMM').format(when).toUpperCase(),
+      DateFormat('MMM', 'pt_BR').format(when).toUpperCase(),
     );
   }
 

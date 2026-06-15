@@ -406,32 +406,6 @@ class _AdminActionsCardState extends ConsumerState<_AdminActionsCard> {
     }
   }
 
-  Future<void> _remove() async {
-    final ok = await showConfirmDialog(
-      context,
-      title: 'Remover membro',
-      message:
-          'Esta ação remove o vínculo de ${widget.member.displayName} '
-          'permanentemente. Prefira marcar como ex-membro para preservar '
-          'o histórico.',
-      confirmLabel: 'Remover',
-      danger: true,
-    );
-    if (!ok) return;
-
-    setState(() => _busy = true);
-    try {
-      await ref
-          .read(membersRepositoryProvider)
-          .removeMember(widget.extraId, widget.member.uid);
-      if (mounted) await Navigator.of(context).maybePop();
-    } catch (e) {
-      _showError(e);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
   void _showError(Object e) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -502,12 +476,6 @@ class _AdminActionsCardState extends ConsumerState<_AdminActionsCard> {
                     variant: AppButtonVariant.secondary,
                     onPressed: _busy ? null : _reactivate,
                   ),
-                AppButton(
-                  label: 'Remover',
-                  icon: Icons.delete_outline,
-                  variant: AppButtonVariant.danger,
-                  onPressed: _busy ? null : _remove,
-                ),
               ],
             ),
         ],
